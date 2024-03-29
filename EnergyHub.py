@@ -12,6 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import cvxpy as cp
+import mosek
 
 # Energy demands
 # ===============
@@ -32,7 +33,7 @@ Horizon = 8760  # Hours in a calendar year
 
 # Discounted cash flow calculations
 # ==================================
-d = XXX  # Interest rate used to discount future operational cashflows
+d = 0.03  # Interest rate used to discount future operational cashflows
 
 # Connections with energy grids at the input of the energy system
 # ================================================================
@@ -45,14 +46,14 @@ Exp_elec = cp.Variable(Horizon)  # Electricity export from the grid for every ti
 
 # Parameter definitions
 # ---------------------
-price_gas = XXX  # Natural gas price [CHF, EUR, USD/kWh]
-esc_gas = XXX  # Escalation rate per year for natural gas price
-price_elec = XXX  # Grid electricity price [CHF, EUR, USD/kWh]
-esc_elec = XXX  # Escalation rate per year for electricity price
-exp_price_elec = XXX  # Feed-in tariff for exported electricity [CHF, EUR, USD/kWh]
-esc_elec_exp = XXX  # Escalation rate per year for feed-in tariff for exported electricity [%]
-co2_gas = XXX  # Natural gas emission factor [kgCO2/kWh]
-co2_elec = XXX  # Electricity emission factor [kgCO2/kWh]
+price_gas = 100  # Natural gas price [CHF, EUR, USD/kWh]
+esc_gas = 0.02  # Escalation rate per year for natural gas price
+price_elec = 0.15  # Grid electricity price [CHF, EUR, USD/kWh]
+esc_elec = 0.02  # Escalation rate per year for electricity price
+exp_price_elec = 0.12  # Feed-in tariff for exported electricity [CHF, EUR, USD/kWh]
+esc_elec_exp = 0.02  # Escalation rate per year for feed-in tariff for exported electricity [%]
+co2_gas = 0.198  # Natural gas emission factor [kgCO2/kWh]
+co2_elec = 0.0  # Electricity emission factor [kgCO2/kWh]
 
 # Constraint definitions
 # ----------------------
@@ -63,8 +64,8 @@ grid_con = [Imp_elec >= 0, Imp_gas >= 0, Exp_elec >= 0]
 
 # Parameter definitions
 # ---------------------
-eff_gb = XXX  # Conversion efficiency of gas boiler
-cost_gb = XXX  # Investment cost for gas boiler [CHF, EUR, USD/kW]
+eff_gb = 0.9  # Conversion efficiency of gas boiler
+cost_gb = 110  # Investment cost for gas boiler [CHF, EUR, USD/kW]
 
 # Capacity variable
 # ------------------
@@ -84,8 +85,8 @@ gb_con = [Cap_gb >= 0, P_out_gb == P_in_gb * eff_gb, P_in_gb >= 0, P_out_gb >= 0
 
 # Parameter definitions
 # ---------------------
-eff_gshp = XXX  # Conversion efficiency (Coefficient of Performance) of ground-source heat pump
-cost_gshp = XXX  # Investment cost for ground-source heat pump [CHF, EUR, USD/kW]
+eff_gshp = 4  # Conversion efficiency (Coefficient of Performance) of ground-source heat pump
+cost_gshp = 850  # Investment cost for ground-source heat pump [CHF, EUR, USD/kW]
 
 # Capacity variables
 # ------------------
@@ -105,9 +106,9 @@ gshp_con = [Cap_gshp >= 0, P_out_gshp == P_in_gshp * eff_gshp, P_in_gshp >= 0, P
 
 # Parameter definitions
 # ---------------------
-eff_elec_chp = XXX  # Electrical efficiency of combined heat and power engine
-eff_heat_chp = XXX  # Thermal efficiency of combined heat and power engine
-cost_chp = XXX  # Investment cost for combined heat and power engine [CHF, EUR, USD/kWe]
+eff_elec_chp = 0.3  # Electrical efficiency of combined heat and power engine
+eff_heat_chp = 0.6  # Thermal efficiency of combined heat and power engine
+cost_chp = 700  # Investment cost for combined heat and power engine [CHF, EUR, USD/kWe]
 
 # Capacity variable
 # -----------------
@@ -129,9 +130,9 @@ chp_con = [Cap_chp >= 0, P_out_heat_chp == P_in_chp * eff_heat_chp, P_out_elec_c
 
 # Definitions
 # -----------
-eff_pv = XXX  # Conversion efficiency (Coefficient of Performance) of photovoltaic panels
-cost_pv = XXX  # Investment cost for photovoltaic panels [CHF, EUR, USD/m2]
-max_solar_area = XXX  # Maximum available area to accommodate photovoltaic panels [m2]
+eff_pv = 0.15  # Conversion efficiency (Coefficient of Performance) of photovoltaic panels
+cost_pv = 250  # Investment cost for photovoltaic panels [CHF, EUR, USD/m2]
+max_solar_area = 1e3  # Maximum available area to accommodate photovoltaic panels [m2]
 
 # Capacity variable
 # -----------------
@@ -151,11 +152,11 @@ pv_con = [Cap_pv >= 0, Cap_pv <= max_solar_area, P_out_pv >= 0,
 
 # Definitions
 # -----------
-cut_out_wind_speed = XXX  # Cut-off wind speed [m/s]
-cut_in_wind_speed = XXX  # Cut-in wind speed [m/s]
-rated_wind_speed = XXX  # Rated wind speed [m/s]
-cost_wind = XXX  # Investment cost for wind turbines [CHF, EUR, USD/kW]
-max_wind_cap = XXX  # Maximum possible capacity of wind turbines that can be accommodated [kW]
+cut_out_wind_speed = 25  # Cut-off wind speed [m/s]
+cut_in_wind_speed = 3  # Cut-in wind speed [m/s]
+rated_wind_speed = 12.5  # Rated wind speed [m/s]
+cost_wind = 1600  # Investment cost for wind turbines [CHF, EUR, USD/kW]
+max_wind_cap = 1e2  # Maximum possible capacity of wind turbines that can be accommodated [kW]
 
 # Capacity variable
 # -----------------
@@ -183,12 +184,12 @@ for t in np.arange(0, 8760):
 
 # Definitions
 # -----------
-self_dis_ts = XXX  # Self-discharging losses of thermal storage tank
-ch_eff_ts = XXX  # Charging efficiency of thermal storage tank
-dis_eff_ts = XXX  # Discharging efficiency of thermal storage tank
-max_ch_ts = XXX  # Maximum charging rate of thermal storage tank (given as percentage of tank capacity)
-max_dis_ts = XXX  # Maximum discharging rate of thermal storage tank
-cost_ts = XXX  # Investment cost for thermal storage tank [CHF, EUR, USD/kWh]
+self_dis_ts = 0.01  # Self-discharging losses of thermal storage tank
+ch_eff_ts = 0.9  # Charging efficiency of thermal storage tank
+dis_eff_ts = 0.9  # Discharging efficiency of thermal storage tank
+max_ch_ts = 0.25  # Maximum charging rate of thermal storage tank (given as percentage of tank capacity)
+max_dis_ts = 0.25 # Maximum discharging rate of thermal storage tank
+cost_ts = 30  # Investment cost for thermal storage tank [CHF, EUR, USD/kWh]
 
 # Capacity variables
 # ------------------
@@ -218,12 +219,12 @@ ts_con = ts_con_1 + ts_con_2
 
 # Definitions
 # -----------
-self_dis_bat = XXX  # Self-discharging losses of battery
-ch_eff_bat = XXX  # Charging efficiency of battery
-dis_eff_bat = XXX  # Discharging efficiency of battery
-max_ch_bat = XXX  # Maximum charging rate of battery (as percentage of capacity)
-max_dis_bat = XXX  # Maximum discharging rate of battery
-cost_bat = XXX  # Investment cost for battery [CHF, EUR, USD/kWh]
+self_dis_bat = 0.001  # Self-discharging losses of battery
+ch_eff_bat = 0.95  # Charging efficiency of battery
+dis_eff_bat = 0.95  # Discharging efficiency of battery
+max_ch_bat = 0.30   # Maximum charging rate of battery (as percentage of capacity)
+max_dis_bat = 0.30  # Maximum discharging rate of battery
+cost_bat = 350  # Investment cost for battery [CHF, EUR, USD/kWh]
 
 # Capacity variables
 # ------------------
