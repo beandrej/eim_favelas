@@ -283,15 +283,45 @@ constraints = grid_con + gb_con + gshp_con + chp_con + pv_con + wind_con + ts_co
 
 # Select the desired objective
 # ----------------------------
-objective = cost
+#objective = cost
 # objective = co2
 
-prob = cp.Problem(cp.Minimize(objective), constraints)
+#prob = cp.Problem(cp.Minimize(objective), constraints)
 # Optimize the design of the energy system
 # ----------------------------------------
-
 print('Installed solvers:', cp.installed_solvers())
-prob.solve(solver='MOSEK')
+prob.solve(solver='SCIPY')
+
+#Multi Objective Optimization
+eta = [i/10 for i in range(1,10,1)]
+sol_cost = []
+sol_co2 = []
+#initial optimization
+#minimze cost optimal
+prob = cp.Problem(cp.Minimize(cost), constraints)
+prob.solve(solver='SCIPY')
+sol_cost.append(cost.value)
+sol_co2.append(co2.value)
+#minimize co2 optimal
+prob = cp.Problem(cp.Minimize(co2), constraints)
+prob.solve(solver='SCIPY')
+sol_cost.append(cost.value)
+sol_co2.append(co2.value)
+
+for i in eta:
+    print('Multi Objective Optimization with eta = ', i)
+    co2_con = [co2 <= sol_co2[1]+i*(sol_co2[0]-sol_co2[1])]
+    constraints_mo = constraints + co2_con
+    #minimize cost and co2
+    prob = cp.Problem(cp.Minimize(cost), constraints_mo)
+    prob.solve(solver='SCIPY')
+    sol_cost.append(cost.value)
+    sol_co2.append(co2.value)
+
+
+
+print(sol_co2)
+print(sol_cost)
 
 # Output objective function value
 # ================================
