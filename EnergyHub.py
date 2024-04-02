@@ -5,6 +5,14 @@
  Edited and extended by: G. Mavromatidis (gmavroma@ethz.ch) 28.01.2020      |
  Converted from Matlab to Python by: S. Powell (spowell@ethz.ch) 05.01.2024 |
  ========================================================================
+
+ Technologies: Gas boiler, PV, battery, heat storage, HeatPump
+ Parameters: See first list, Favela Area for PV, Income Average Household favela, Job created per technology, renewable ninja
+
+Andrej: Gas Price, Electricity Price, Feed-in Tariff, Elecitricity Emission Factor, renewable ninja
+Lukas: Income Average Household favela, Job created per technology, Favela Area for PV
+
+
 """
 
 import numpy as np
@@ -46,14 +54,14 @@ Exp_elec = cp.Variable(Horizon)  # Electricity export from the grid for every ti
 
 # Parameter definitions
 # ---------------------
-price_gas = 100  # Natural gas price [CHF, EUR, USD/kWh]
+price_gas = 100  # Natural gas price [CHF, EUR, USD/kWh] #ToDO find this for Brazil
 esc_gas = 0.02  # Escalation rate per year for natural gas price
-price_elec = 0.15  # Grid electricity price [CHF, EUR, USD/kWh]
+price_elec = 0.15  # Grid electricity price [CHF, EUR, USD/kWh] #ToDO find this for Brazil
 esc_elec = 0.02  # Escalation rate per year for electricity price
-exp_price_elec = 0.12  # Feed-in tariff for exported electricity [CHF, EUR, USD/kWh]
+exp_price_elec = 0.12  # Feed-in tariff for exported electricity [CHF, EUR, USD/kWh] #ToDO find this for Brazil
 esc_elec_exp = 0.02  # Escalation rate per year for feed-in tariff for exported electricity [%]
 co2_gas = 0.198  # Natural gas emission factor [kgCO2/kWh]
-co2_elec = 0.0  # Electricity emission factor [kgCO2/kWh]
+co2_elec = 0.0  # Electricity emission factor [kgCO2/kWh] #ToDO find this for Brazil
 
 # Constraint definitions
 # ----------------------
