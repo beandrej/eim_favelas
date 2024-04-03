@@ -74,6 +74,7 @@ grid_con = [Imp_elec >= 0, Imp_gas >= 0, Exp_elec >= 0]
 # ---------------------
 eff_gb = 0.9  # Conversion efficiency of gas boiler
 cost_gb = 110  # Investment cost for gas boiler [CHF, EUR, USD/kW]
+jobs_created_gb = 0.00237 #[job years/ kW] excluding fuel related jobs as we have a pipeline already built with fuel + 15.1 jobs/PJ of gas
 
 # Capacity variable
 # ------------------
@@ -95,6 +96,7 @@ gb_con = [Cap_gb >= 0, P_out_gb == P_in_gb * eff_gb, P_in_gb >= 0, P_out_gb >= 0
 # ---------------------
 eff_gshp = 4  # Conversion efficiency (Coefficient of Performance) of ground-source heat pump
 cost_gshp = 850  # Investment cost for ground-source heat pump [CHF, EUR, USD/kW]
+jobs_created_gshp = 0.0073 #[job years/ kW]
 
 # Capacity variables
 # ------------------
@@ -109,7 +111,7 @@ P_out_gshp = cp.Variable(Horizon)  # Heat generation by ground-source heat pump 
 # ----------------
 gshp_con = [Cap_gshp >= 0, P_out_gshp == P_in_gshp * eff_gshp, P_in_gshp >= 0, P_out_gshp >= 0, P_out_gshp <= Cap_gshp]
 
-# Combined heat and power engine (chp)
+# Combined heat and power engine (chp) -> not considered
 # =====================================
 
 # Parameter definitions
@@ -130,17 +132,22 @@ P_out_elec_chp = cp.Variable(Horizon)  # Electricity generation by combined heat
 
 # CHP constraints
 # ---------------
-chp_con = [Cap_chp >= 0, P_out_heat_chp == P_in_chp * eff_heat_chp, P_out_elec_chp == P_in_chp * eff_elec_chp,
+chp_con = [Cap_chp == 0, P_out_heat_chp == P_in_chp * eff_heat_chp, P_out_elec_chp == P_in_chp * eff_elec_chp,
            P_in_chp >= 0, P_out_heat_chp >= 0, P_out_elec_chp >= 0, P_out_elec_chp <= Cap_chp]
 
 # Photovoltaic panels
 # ====================
 
+# Parameter definitions
+size_favela = 1.2e6  # Area of the favela [m2]
+percentage_area_roof = 0.56  # Percentage of the favela area that can be used for photovoltaic panels
+jobs_created_pv = 0.0341 #[job years/ kW]
+
 # Definitions
 # -----------
 eff_pv = 0.15  # Conversion efficiency (Coefficient of Performance) of photovoltaic panels
 cost_pv = 250  # Investment cost for photovoltaic panels [CHF, EUR, USD/m2]
-max_solar_area = 1e3  # Maximum available area to accommodate photovoltaic panels [m2]
+max_solar_area = size_favela*percentage_area_roof  # Maximum available area to accommodate photovoltaic panels [m2]
 
 # Capacity variable
 # -----------------
@@ -155,7 +162,7 @@ P_out_pv = cp.Variable(Horizon)  # Electricity generation by photovoltaic panels
 pv_con = [Cap_pv >= 0, Cap_pv <= max_solar_area, P_out_pv >= 0,
           P_out_pv == solar['Solar radiation [kWh/m2]'].values * Cap_pv * eff_pv]
 
-# Wind turbine
+# Wind turbine -> not considered
 # =============
 
 # Definitions
@@ -176,7 +183,7 @@ P_out_wind = cp.Variable(Horizon)  # Electricity generation by wind turbines [kW
 
 # Wind constraints
 # ----------------
-wind_con = [Cap_wind >= 0, Cap_wind <= max_wind_cap, P_out_wind >= 0]
+wind_con = [Cap_wind == 0, Cap_wind <= max_wind_cap, P_out_wind >= 0]
 
 for t in np.arange(0, 8760):
     if wind.loc[t, 'Wind speed [m/s]'] <= cut_in_wind_speed or wind.loc[t, 'Wind speed [m/s]'] >= cut_out_wind_speed:
@@ -198,6 +205,7 @@ dis_eff_ts = 0.9  # Discharging efficiency of thermal storage tank
 max_ch_ts = 0.25  # Maximum charging rate of thermal storage tank (given as percentage of tank capacity)
 max_dis_ts = 0.25 # Maximum discharging rate of thermal storage tank
 cost_ts = 30  # Investment cost for thermal storage tank [CHF, EUR, USD/kWh]
+jobs_creaated_ts = 0.00023 #[job years/ kW]
 
 # Capacity variables
 # ------------------
@@ -233,6 +241,7 @@ dis_eff_bat = 0.95  # Discharging efficiency of battery
 max_ch_bat = 0.30   # Maximum charging rate of battery (as percentage of capacity)
 max_dis_bat = 0.30  # Maximum discharging rate of battery
 cost_bat = 350  # Investment cost for battery [CHF, EUR, USD/kWh]
+jobs_created_bat = 0.0281 #[job years/ kW]
 
 # Capacity variables
 # ------------------
@@ -281,6 +290,7 @@ for y in np.arange(0, 25):
 
 cost = Inv + cp.sum(Op / np.power((1 + d), np.arange(1, 26)))
 co2 = 25 * cp.sum(Imp_gas * co2_gas + Imp_elec * co2_elec)
+jobs = Cap_gb * jobs_created_gb + Cap_gshp * jobs_created_gshp + Cap_pv * jobs_created_pv + Cap_ts * jobs_creaated_ts + Cap_bat * jobs_created_bat
 
 # Collect all constraints
 # ========================
@@ -300,7 +310,7 @@ constraints = grid_con + gb_con + gshp_con + chp_con + pv_con + wind_con + ts_co
 print('Installed solvers:', cp.installed_solvers())
 prob.solve(solver='SCIPY')
 
-#Multi Objective Optimization
+#Multi Objective Optimization -> cost and co2
 eta = [i/10 for i in range(1,10,1)]
 sol_cost = []
 sol_co2 = []
@@ -330,6 +340,55 @@ for i in eta:
 
 print(sol_co2)
 print(sol_cost)
+
+#Multiobjective Optimization -> cost and jobs
+eta = [i/10 for i in range(1,10,1)]
+sol_cost = []
+sol_jobs = []
+#initial optimization
+#minimze cost optimal
+prob = cp.Problem(cp.Minimize(cost), constraints)
+prob.solve(solver='SCIPY')
+sol_cost.append(cost.value)
+sol_jobs.append(jobs.value)
+#minimize jobs optimal
+prob = cp.Problem(cp.Minimize(jobs), constraints)
+prob.solve(solver='SCIPY')
+sol_cost.append(cost.value)
+sol_jobs.append(jobs.value)
+
+for i in eta:
+    print('Multi Objective Optimization with eta = ', i)
+    jobs_con = [jobs >= sol_jobs[0]+i*(sol_jobs[1]-sol_jobs[0])]
+    constraints_mo = constraints + jobs_con
+    #minimize cost and co2
+    prob = cp.Problem(cp.Minimize(cost), constraints_mo)
+    prob.solve(solver='SCIPY')
+    sol_cost.append(cost.value)
+    sol_jobs.append(jobs.value)
+
+#Investment Analysis
+#ToDo add base case with investment to just meet the heat demand
+#ToDO decide whether to do the costs in CHF or USD
+#Parameters
+annual_income_per_persom = 170*12 #Income per person per year [US Dollar] # in CHF: 155*12
+percentage_invest = 0.01 #Percentage of income invested
+populationsize = 55361 #Population size
+average_government_exp = 198 #Average government expenses per person per year [US Dollar/Person] # in CHF: 180
+Inv_bound = [annual_income_per_persom*percentage_invest*populationsize, average_government_exp*populationsize]
+
+inv_sol_cost = []
+inv_sol_co2 = []
+
+for bound in Inv_bound:
+    print('Investment Analysis with bound = ', bound)
+    inv_con = [Inv <= bound]
+    constraints_inv = constraints + inv_con
+    #minimize cost and co2
+    prob = cp.Problem(cp.Minimize(cost), constraints_inv)
+    prob.solve(solver='SCIPY')
+    inv_sol_cost.append(cost.value)
+    inv_sol_co2.append(co2.value)
 
 # Output objective function value
 # ================================
