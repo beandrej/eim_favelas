@@ -54,13 +54,13 @@ Exp_elec = cp.Variable(Horizon)  # Electricity export from the grid for every ti
 
 # Parameter definitions
 # ---------------------
-price_gas = 100  # Natural gas price [CHF, EUR, USD/kWh] #ToDO find this for Brazil
+price_gas = 0.231*1.4  # Natural gas price [CHF, EUR, USD/kWh] #ToDO find this for Brazil
 esc_gas = 0.02  # Escalation rate per year for natural gas price
-price_elec = 0.15  # Grid electricity price [CHF, EUR, USD/kWh] #ToDO find this for Brazil
+price_elec = 0.18  # Grid electricity price [CHF, EUR, USD/kWh] #ToDO find this for Brazil
 esc_elec = 0.02  # Escalation rate per year for electricity price
-exp_price_elec = 0.12  # Feed-in tariff for exported electricity [CHF, EUR, USD/kWh] #ToDO find this for Brazil
+exp_price_elec = 0.0  # Feed-in tariff for exported electricity [CHF, EUR, USD/kWh] #ToDO find this for Brazil
 esc_elec_exp = 0.02  # Escalation rate per year for feed-in tariff for exported electricity [%]
-co2_gas = 0.198  # Natural gas emission factor [kgCO2/kWh]
+co2_gas = 0.1295  # Natural gas emission factor [kgCO2/kWh]
 co2_elec = 0.0  # Electricity emission factor [kgCO2/kWh] #ToDO find this for Brazil
 
 # Constraint definitions
@@ -171,7 +171,7 @@ cut_out_wind_speed = 25  # Cut-off wind speed [m/s]
 cut_in_wind_speed = 3  # Cut-in wind speed [m/s]
 rated_wind_speed = 12.5  # Rated wind speed [m/s]
 cost_wind = 1600  # Investment cost for wind turbines [CHF, EUR, USD/kW]
-max_wind_cap = 1e2  # Maximum possible capacity of wind turbines that can be accommodated [kW]
+max_wind_cap = 0  # Maximum possible capacity of wind turbines that can be accommodated [kW]
 
 # Capacity variable
 # -----------------
@@ -194,7 +194,7 @@ for t in np.arange(0, 8760):
         wind_con = wind_con + [P_out_wind[t] == Cap_wind * (wind.loc[t, 'Wind speed [m/s]'] - cut_in_wind_speed) / (
                     rated_wind_speed - cut_in_wind_speed)]
 
-# Thermal storage tank
+# Thermal storage tank  --> not considered
 # =====================
 
 # Definitions
@@ -219,7 +219,7 @@ E_ts = cp.Variable(Horizon + 1)  # Stored energy in thermal storage tank [kWh]
 
 # Storage tank constraints
 # ------------------------
-ts_con_1 = [Cap_ts >= 0, Q_in_ts >= 0, Q_out_ts >= 0, E_ts >= 0, E_ts <= Cap_ts, Q_in_ts <= max_ch_ts * Cap_ts,
+ts_con_1 = [Cap_ts == 0, Q_in_ts >= 0, Q_out_ts >= 0, E_ts >= 0, E_ts <= Cap_ts, Q_in_ts <= max_ch_ts * Cap_ts,
             Q_out_ts <= max_dis_ts * Cap_ts]
 
 # Storage constraints
@@ -308,7 +308,7 @@ constraints = grid_con + gb_con + gshp_con + chp_con + pv_con + wind_con + ts_co
 # Optimize the design of the energy system
 # ----------------------------------------
 print('Installed solvers:', cp.installed_solvers())
-prob.solve(solver='SCIPY')
+#prob.solve(solver='SCIPY')
 
 #Multi Objective Optimization -> cost and co2
 eta = [i/10 for i in range(1,10,1)]
