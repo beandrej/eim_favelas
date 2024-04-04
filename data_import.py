@@ -1,22 +1,16 @@
+import os
 import pandas as pd
 
 def get_data():
-    jan = pd.read_csv('elec_demand/jan.csv')
-    feb = pd.read_csv('elec_demand/feb.csv')
-    mar = pd.read_csv('elec_demand/mar.csv')
-    apr = pd.read_csv('elec_demand/apr.csv')
-    mai = pd.read_csv('elec_demand/mai.csv')
-    jun = pd.read_csv('elec_demand/jun.csv')
-    jul = pd.read_csv('elec_demand/jul.csv')
-    aug = pd.read_csv('elec_demand/aug.csv')
-    sep = pd.read_csv('elec_demand/sep.csv')
-    okt = pd.read_csv('elec_demand/okt.csv')
-    nov = pd.read_csv('elec_demand/nov.csv')
-    dez = pd.read_csv('elec_demand/dez.csv')
-    df_months = [jan, feb, mar, apr, mai, jun, jul, aug, sep, okt, nov, dez]
+    dir = 'elec_demand'
+    df_months = []
+    for filename in os.listdir(dir):
+        if filename.endswith('.csv'):
+            path = os.path.join(dir, filename)
+            df = pd.read_csv(path)
+            df.drop(df.index[-1], inplace=True)
+            df_months.append(df)
 
-    for i, df in enumerate(df_months):
-        df_months[i] = df.drop(df.index[-1])
     year = pd.concat(df_months, ignore_index=True)
     year.dropna(inplace=True)
 
