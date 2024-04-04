@@ -18,6 +18,7 @@ Lukas: Income Average Household favela, Job created per technology, Favela Area 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import csv
 
 import cvxpy as cp
 import mosek
@@ -25,11 +26,11 @@ import data_import
 
 # Energy demands
 # ===============
-demand_data = pd.read_excel('demands.xlsx',
-                            names=['Heating demand [kWh]', 'Electricity demand [kWh]'],
-                            header=None)
-elec_demand = demand_data['Electricity demand [kWh]'].values
-heat_demand = demand_data['Heating demand [kWh]'].values
+#demand_data = pd.read_excel('demands.xlsx',
+                         #   names=['Heating demand [kWh]', 'Electricity demand [kWh]'],
+                         #   header=None)
+#elec_demand = demand_data['Electricity demand [kWh]'].values
+#heat_demand = demand_data['Heating demand [kWh]'].values
 
 """
 
@@ -37,7 +38,7 @@ BRAZIL DATA IMPORT
 
 """
 
-brazil_elec, brazil_heat = data_import.get_data()
+elec_demand, heat_demand = data_import.get_data()
 
 """
 
@@ -47,7 +48,8 @@ IMPORT FINISH
 
 # Renewable energy potentials
 # ============================
-solar = pd.read_excel('solar.xlsx', header=None, names=['Solar radiation [kWh/m2]'])
+#solar = pd.read_excel('solar.xlsx', header=None, names=['Solar radiation [kWh/m2]'])
+solar = pd.read_csv('solar.csv', delimiter=',', comment='#')['swgdn']*0.001 # in kWh/m2
 wind = pd.read_excel('wind.xlsx', header=None, names=['Wind speed [m/s]'])
 
 # Optimization horizon
@@ -68,15 +70,16 @@ Imp_gas = cp.Variable(Horizon)  # Natural gas import from the grid for every tim
 Exp_elec = cp.Variable(Horizon)  # Electricity export from the grid for every time step [kWh]
 
 # Parameter definitions
+#ToDO check if all in CHF
 # ---------------------
-price_gas = 0.231*1.4  # Natural gas price [CHF, EUR, USD/kWh] #ToDO find this for Brazil
+price_gas = 0.21*1.4  # Natural gas price [CHF, EUR, USD/kWh]  # USD: 0.231*1.4; CHF 0.21*1.4
 esc_gas = 0.02  # Escalation rate per year for natural gas price
-price_elec = 0.18  # Grid electricity price [CHF, EUR, USD/kWh] #ToDO find this for Brazil
+price_elec = 0.16  # Grid electricity price [CHF/kWh]
 esc_elec = 0.02  # Escalation rate per year for electricity price
-exp_price_elec = 0.10  # Feed-in tariff for exported electricity [CHF, EUR, USD/kWh] #ToDO find this for Brazil ###### ---- asuumption germany feed in
+exp_price_elec = 0.0  # Feed-in tariff for exported electricity [CHF/kWh] #ToDO find this for Brazil ###### ---- asuumption germany feed in/ new assumption no export possible
 esc_elec_exp = 0.02  # Escalation rate per year for feed-in tariff for exported electricity [%]
-co2_gas = 0.1295  # Natural gas emission factor [kgCO2/kWh]
-co2_elec = 0.0  # Electricity emission factor [kgCO2/kWh] #ToDO find this for Brazil
+co2_gas = 0.198  # Natural gas emission factor [kgCO2/kWh]
+co2_elec = 0.1295  # Electricity emission factor [kgCO2/kWh] #ToDO find this for Brazil https://www.climatiq.io/data/emission-factor/2ac52a91-5922-4f9f-8def-f4302f4ecf55
 
 # Constraint definitions
 # ----------------------
@@ -175,7 +178,7 @@ P_out_pv = cp.Variable(Horizon)  # Electricity generation by photovoltaic panels
 # PV constraints
 # --------------
 pv_con = [Cap_pv >= 0, Cap_pv <= max_solar_area, P_out_pv >= 0,
-          P_out_pv == solar['Solar radiation [kWh/m2]'].values * Cap_pv * eff_pv]
+          P_out_pv == solar.values * Cap_pv * eff_pv]
 
 # Wind turbine -> not considered
 # =============
@@ -220,7 +223,7 @@ dis_eff_ts = 0.9  # Discharging efficiency of thermal storage tank
 max_ch_ts = 0.25  # Maximum charging rate of thermal storage tank (given as percentage of tank capacity)
 max_dis_ts = 0.25 # Maximum discharging rate of thermal storage tank
 cost_ts = 30  # Investment cost for thermal storage tank [CHF, EUR, USD/kWh]
-jobs_creaated_ts = 0.00023 #[job years/ kW]
+jobs_created_ts = 0.00023 #[job years/ kW]
 
 # Capacity variables
 # ------------------
@@ -305,7 +308,7 @@ for y in np.arange(0, 25):
 
 cost = Inv + cp.sum(Op / np.power((1 + d), np.arange(1, 26)))
 co2 = 25 * cp.sum(Imp_gas * co2_gas + Imp_elec * co2_elec)
-jobs = Cap_gb * jobs_created_gb + Cap_gshp * jobs_created_gshp + Cap_pv * jobs_created_pv + Cap_ts * jobs_creaated_ts + Cap_bat * jobs_created_bat
+jobs = Cap_gb * jobs_created_gb + Cap_gshp * jobs_created_gshp + Cap_pv * jobs_created_pv + Cap_ts * jobs_created_ts + Cap_bat * jobs_created_bat
 
 # Collect all constraints
 # ========================
@@ -322,9 +325,10 @@ constraints = grid_con + gb_con + gshp_con + chp_con + pv_con + wind_con + ts_co
 #prob = cp.Problem(cp.Minimize(objective), constraints)
 # Optimize the design of the energy system
 # ----------------------------------------
+
 print('Installed solvers:', cp.installed_solvers())
 #prob.solve(solver='SCIPY')
-
+"""
 #Multi Objective Optimization -> cost and co2
 eta = [i/10 for i in range(1,10,1)]
 sol_cost = []
@@ -352,9 +356,42 @@ for i in eta:
     sol_co2.append(co2.value)
 
 
-
 print(sol_co2)
 print(sol_cost)
+
+# Specify the file name
+file_name = "emissions_costs_data.csv"
+
+# Writing data to CSV file
+with open(file_name, 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(["Emissions (kg)", "Costs"])  # Writing header
+    writer.writerows(zip(list(sol_co2), sol_cost))  # Writing data rows
+
+print("Data has been successfully saved to", file_name)
+
+
+# Plotting
+sol_co2 = pd.read_csv('emissions_costs_data.csv')['Emissions (kg)']
+sol_cost = pd.read_csv('emissions_costs_data.csv')['Costs']
+
+emission = list(sol_co2)
+costs = [float(x[1:-1]) for x in sol_cost]
+emission = emission[1:] + [emission[0]]
+costs = costs[1:] + [costs[0]]
+plt.plot(emission, costs, marker='o', linestyle='-')
+
+# Adding labels and title
+plt.xlabel('Emissions (kg)')
+plt.ylabel('Costs (CHF)')
+plt.title('Emissions vs Costs')
+
+# Displaying the plot
+plt.grid(True)
+plt.savefig('emission_vs_cost.png', dpi=300)
+plt.show()
+"""
+
 
 #Multiobjective Optimization -> cost and jobs
 eta = [i/10 for i in range(1,10,1)]
@@ -367,7 +404,7 @@ prob.solve(solver='SCIPY')
 sol_cost.append(cost.value)
 sol_jobs.append(jobs.value)
 #minimize jobs optimal
-prob = cp.Problem(cp.Minimize(jobs), constraints)
+prob = cp.Problem(cp.Maximize(jobs), constraints)
 prob.solve(solver='SCIPY')
 sol_cost.append(cost.value)
 sol_jobs.append(jobs.value)
@@ -382,15 +419,54 @@ for i in eta:
     sol_cost.append(cost.value)
     sol_jobs.append(jobs.value)
 
+print(sol_jobs)
+print(sol_cost)
+
+# Specify the file name
+file_name = "jobs_costs_data.csv"
+
+# Writing data to CSV file
+with open(file_name, 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(["Jobs", "Costs"])  # Writing header
+    writer.writerows(zip(list(sol_jobs), sol_cost))  # Writing data rows
+
+print("Data has been successfully saved to", file_name)
+
+
+# Plotting
+sol_jobs = pd.read_csv('jobs_costs_data.csv')['Jobs']
+sol_cost = pd.read_csv('jobs_costs_data.csv')['Costs']
+
+jobs = list(sol_jobs)
+costs = [float(x[1:-1]) for x in sol_cost]
+jobs = jobs[1:] + [jobs[0]]
+costs = costs[1:] + [costs[0]]
+plt.plot(jobs, costs, marker='o', linestyle='-')
+
+# Adding labels and title
+plt.xlabel('Jobs created')
+plt.ylabel('Costs (CHF)')
+plt.title('Jobs vs Costs')
+
+# Displaying the plot
+plt.grid(True)
+plt.savefig('jobs_vs_cost.png', dpi=300)
+plt.show()
+
+
+
+"""
 #Investment Analysis
 #ToDo add base case with investment to just meet the heat demand
 #ToDO decide whether to do the costs in CHF or USD
 #Parameters
-annual_income_per_persom = 170*12 #Income per person per year [US Dollar] # in CHF: 155*12
+annual_income_per_persom = 155*12 #Income per person per year [US Dollar] # in CHF: 155*12; in USD: 170*12
 percentage_invest = 0.01 #Percentage of income invested
 populationsize = 55361 #Population size
-average_government_exp = 198 #Average government expenses per person per year [US Dollar/Person] # in CHF: 180
-Inv_bound = [annual_income_per_persom*percentage_invest*populationsize, average_government_exp*populationsize]
+average_government_exp = 180 #Average government expenses per person per year [US Dollar/Person] # in CHF: 180; in USD: 198
+inv_base_case = heat_demand.max()*cost_gb #Investment for base case
+Inv_bound = [inv_base_case,annual_income_per_persom*percentage_invest*populationsize, average_government_exp*populationsize]
 
 inv_sol_cost = []
 inv_sol_co2 = []
@@ -405,6 +481,62 @@ for bound in Inv_bound:
     inv_sol_cost.append(cost.value)
     inv_sol_co2.append(co2.value)
 
+#unlimited investment
+prob = cp.Problem(cp.Minimize(cost), constraints)
+prob.solve(solver='SCIPY')
+inv_sol_cost.append(cost.value)
+inv_sol_co2.append(co2.value)
+
+
+print(inv_sol_co2)
+print(inv_sol_cost)
+
+# Specify the file name
+file_name = "investment_costs_data.csv"
+
+# Writing data to CSV file
+with open(file_name, 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(["Emissions (kg)", "Costs"])  # Writing header
+    writer.writerows(zip(list(inv_sol_co2), inv_sol_cost))  # Writing data rows
+
+print("Data has been successfully saved to", file_name)
+"""
+"""
+# Plotting
+inv_sol_co2 = pd.read_csv('investment_costs_data.csv')['Emissions (kg)']
+inv_sol_cost = pd.read_csv('investment_costs_data.csv')['Costs']
+
+#PLot
+# Sample data (replace with your actual data)
+scenarios = ['Base Case', 'Income', 'Government', 'Unlimited']
+emissions = list(inv_sol_co2)  # Emissions in kg
+costs = list([float(x[1:-1]) for x in inv_sol_cost])  # Costs in some currency
+
+# Setting up positions for the bars
+x = np.arange(len(scenarios))  # the scenario locations
+width = 0.35  # the width of the bars
+
+# Plotting emissions
+fig, ax = plt.subplots()
+bars1 = ax.bar(x - width/2, emissions, width, label='Emissions in kg CO2')
+
+# Plotting costs
+bars2 = ax.bar(x + width/2, costs, width, label='Costs in CHF')
+
+# Adding labels and title
+ax.set_xlabel('Scenarios')
+ax.set_ylabel('Values')
+ax.set_title('Emissions and Costs for Different Scenarios')
+ax.set_xticks(x)
+ax.set_xticklabels(scenarios)
+ax.legend()
+
+# Show plot
+plt.savefig("investment.png",dpi=300)
+plt.show()
+"""
+"""
 # Output objective function value
 # ================================
 print('The value of the total system cost is equal to: ', str(cost.value), ' CHF, EUR, USD')
@@ -472,3 +604,4 @@ plt.savefig('fig3.png', bbox_inches='tight')
 plt.show()
 
 # End
+"""

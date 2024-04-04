@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 
 def get_data():
     dir = 'elec_demand'
@@ -14,9 +15,12 @@ def get_data():
     year = pd.concat(df_months, ignore_index=True)
     year.dropna(inplace=True)
 
-    elec = year["Demand (MWh)"] * 0.033478 # --- Scaling factor
+    scaling_factor = (0.1741*55361*0.25*12)/year["Demand (MWh)"].sum() # monthly conusmption per household * number of households * 0.25 * 12 months / total consumption
+
+    elec = year["Demand (MWh)"] * scaling_factor *1000 # in kWh
 
     heat = pd.read_csv('brazil_heat.csv', delimiter=',', comment='#')['total_demand']
+    heat = heat * 1000 # in kWh
 
     assert len(elec) == 8760 and len(heat) == 8760
-    return elec, heat
+    return np.array(elec), np.array(heat)
