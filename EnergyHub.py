@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 
 import cvxpy as cp
 import mosek
+import data_import
 
 # Energy demands
 # ===============
@@ -29,6 +30,20 @@ demand_data = pd.read_excel('demands.xlsx',
                             header=None)
 elec_demand = demand_data['Electricity demand [kWh]'].values
 heat_demand = demand_data['Heating demand [kWh]'].values
+
+"""
+
+BRAZIL DATA IMPORT
+
+"""
+
+brazil_elec, brazil_heat = data_import.get_data()
+
+"""
+
+IMPORT FINISH
+
+"""
 
 # Renewable energy potentials
 # ============================
@@ -58,7 +73,7 @@ price_gas = 0.231*1.4  # Natural gas price [CHF, EUR, USD/kWh] #ToDO find this f
 esc_gas = 0.02  # Escalation rate per year for natural gas price
 price_elec = 0.18  # Grid electricity price [CHF, EUR, USD/kWh] #ToDO find this for Brazil
 esc_elec = 0.02  # Escalation rate per year for electricity price
-exp_price_elec = 0.0  # Feed-in tariff for exported electricity [CHF, EUR, USD/kWh] #ToDO find this for Brazil
+exp_price_elec = 0.10  # Feed-in tariff for exported electricity [CHF, EUR, USD/kWh] #ToDO find this for Brazil ###### ---- asuumption germany feed in
 esc_elec_exp = 0.02  # Escalation rate per year for feed-in tariff for exported electricity [%]
 co2_gas = 0.1295  # Natural gas emission factor [kgCO2/kWh]
 co2_elec = 0.0  # Electricity emission factor [kgCO2/kWh] #ToDO find this for Brazil
