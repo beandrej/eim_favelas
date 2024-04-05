@@ -312,7 +312,7 @@ E_bat = cp.Variable(Horizon + 1)  # Stored energy in battery [kWh]
 
 # Battery constraints
 # -------------------
-bat_con_1 = [Cap_bat >= 0, Cap_bat <= 250000, Q_in_bat >= 0, Q_out_bat >= 0, E_bat >= 0, E_bat <= Cap_bat,
+bat_con_1 = [Cap_bat >= 0, Cap_bat <= 70000, Q_in_bat >= 0, Q_out_bat >= 0, E_bat >= 0, E_bat <= Cap_bat,
              Q_in_bat <= max_ch_bat * Cap_bat, Q_out_bat <= max_dis_bat * Cap_bat]
 
 # Battery constraints
