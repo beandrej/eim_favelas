@@ -35,6 +35,7 @@ def pie_plot_production(name):
     plt.pie(production_values, labels=energy_sources, autopct='%1.1f%%', startangle=140)
     plt.title('Energy Production by Source')
     plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    plt.legend()
     plt.savefig(name,dpi=300)
     plt.show()
 
@@ -57,6 +58,7 @@ def pie_plot_capacity(name):
     plt.pie(filtered_values,labels=[f'{source}: {value}' for source, value in zip(filtered_sources, filtered_values)], startangle=140)
     plt.title('Capacity Installed by Source')
     plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    plt.legend()
     plt.savefig(name, dpi=300)
     plt.show()
 
@@ -141,7 +143,7 @@ P_out_gb = cp.Variable(Horizon)  # Heat generation by natural gas boiler [kWh]
 
 # Gas boiler constraints
 # ----------------------
-gb_con = [Cap_gb == 0, P_out_gb == P_in_gb * eff_gb, P_in_gb >= 0, P_out_gb >= 0, P_out_gb <= Cap_gb]
+gb_con = [Cap_gb >= 0, P_out_gb == P_in_gb * eff_gb, P_in_gb >= 0, P_out_gb >= 0, P_out_gb <= Cap_gb]
 
 # Ground-source heat pump (gshp)
 # ===============================
@@ -163,7 +165,7 @@ P_out_gshp = cp.Variable(Horizon)  # Heat generation by ground-source heat pump 
 
 # GSHP constraints  --------- not considered
 # ----------------
-gshp_con = [Cap_gshp == 0, P_out_gshp == P_in_gshp * eff_gshp, P_in_gshp >= 0, P_out_gshp >= 0, P_out_gshp <= Cap_gshp]
+gshp_con = [Cap_gshp >= 0, P_out_gshp == P_in_gshp * eff_gshp, P_in_gshp >= 0, P_out_gshp >= 0, P_out_gshp <= Cap_gshp]
 
 # Combined heat and power engine (chp)
 # =====================================
@@ -310,7 +312,7 @@ E_bat = cp.Variable(Horizon + 1)  # Stored energy in battery [kWh]
 
 # Battery constraints
 # -------------------
-bat_con_1 = [Cap_bat >= 0, Cap_bat <= 300000, Q_in_bat >= 0, Q_out_bat >= 0, E_bat >= 0, E_bat <= Cap_bat,
+bat_con_1 = [Cap_bat >= 0, Cap_bat <= 250000, Q_in_bat >= 0, Q_out_bat >= 0, E_bat >= 0, E_bat <= Cap_bat,
              Q_in_bat <= max_ch_bat * Cap_bat, Q_out_bat <= max_dis_bat * Cap_bat]
 
 # Battery constraints
@@ -366,7 +368,7 @@ constraints = grid_con + gb_con + gshp_con + chp_con + pv_con + wind_con + ts_co
 print('Installed solvers:', cp.installed_solvers())
 #prob.solve(solver='SCIPY')
 
-"""
+
 #Multi Objective Optimization -> cost and co2
 eta = [i/10 for i in range(1,10,1)]
 sol_cost = []
@@ -386,6 +388,8 @@ sol_cost.append(cost.value)
 sol_co2.append(co2.value)
 pie_plot_production("pie_plot_production_min_emission.png")
 pie_plot_capacity("pie_plot_capacity_min_emission.png")
+
+
 
 for i in eta:
     print('Multi Objective Optimization with eta = ', i)
@@ -434,7 +438,7 @@ plt.savefig('emission_vs_cost.png', dpi=300)
 plt.show()
 
 
-"""
+
 
 #Multiobjective Optimization -> cost and jobs
 eta = [i/10 for i in range(1,10,1)]
@@ -468,9 +472,6 @@ for i in eta:
     prob.solve(solver='SCIPY')
     sol_cost.append(cost.value)
     sol_jobs.append(jobs.value)
-
-sol_jobs.pop()
-sol_cost.pop()
 
 print(sol_jobs)
 print(sol_cost)
@@ -663,4 +664,4 @@ plt.show()
 
 
 
-    
+
