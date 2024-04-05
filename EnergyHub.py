@@ -24,6 +24,42 @@ import cvxpy as cp
 import mosek
 import data_import
 
+#Help functions
+def pie_plot_production(name):
+    # Energy sources and their respective production values
+    energy_sources = ['Solar', 'Natural Gas', 'HeatPump', 'Grid']
+    production_values = [P_out_pv.value.sum(), P_out_gb.value.sum(), P_out_gshp.value.sum(), Imp_elec.value.sum()]
+
+    # Creating the pie plot
+    plt.figure(figsize=(8, 8))
+    plt.pie(production_values, labels=energy_sources, autopct='%1.1f%%', startangle=140)
+    plt.title('Energy Production by Source')
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    plt.savefig(name,dpi=300)
+    plt.show()
+
+
+def pie_plot_capacity(name):
+    # Energy sources and their respective production values
+    energy_sources = ['Solar', 'Natural Gas', 'HeatPump', 'Battery', 'Heat Storage']
+    production_values = [Cap_pv.value.sum(), Cap_gb.value.sum(),Cap_gshp.value.sum(), Cap_bat.value.sum(), Cap_ts.value.sum()]
+
+    # Filter out energy sources with production values of zero
+    filtered_sources = []
+    filtered_values = []
+    for source, value in zip(energy_sources, production_values):
+        if value != 0:
+            filtered_sources.append(source)
+            filtered_values.append(value)
+
+    # Creating the pie plot
+    plt.figure(figsize=(8, 8))
+    plt.pie(filtered_values,labels=[f'{source}: {value}' for source, value in zip(filtered_sources, filtered_values)], startangle=140)
+    plt.title('Capacity Installed by Source')
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    plt.savefig(name, dpi=300)
+    plt.show()
+
 # Energy demands
 # ===============
 #demand_data = pd.read_excel('demands.xlsx',
@@ -105,7 +141,7 @@ P_out_gb = cp.Variable(Horizon)  # Heat generation by natural gas boiler [kWh]
 
 # Gas boiler constraints
 # ----------------------
-gb_con = [Cap_gb >= 0, P_out_gb == P_in_gb * eff_gb, P_in_gb >= 0, P_out_gb >= 0, P_out_gb <= Cap_gb]
+gb_con = [Cap_gb == 0, P_out_gb == P_in_gb * eff_gb, P_in_gb >= 0, P_out_gb >= 0, P_out_gb <= Cap_gb]
 
 # Ground-source heat pump (gshp)
 # ===============================
@@ -137,6 +173,7 @@ gshp_con = [Cap_gshp >= 0, P_out_gshp == P_in_gshp * eff_gshp, P_in_gshp >= 0, P
 eff_elec_chp = 0.3  # Electrical efficiency of combined heat and power engine
 eff_heat_chp = 0.6  # Thermal efficiency of combined heat and power engine
 cost_chp = 700  # Investment cost for combined heat and power engine [CHF, EUR, USD/kWe]
+jobs_created_chp = 0.00076 # [job-years/kW]
 
 # Capacity variable
 # -----------------
@@ -150,7 +187,7 @@ P_out_elec_chp = cp.Variable(Horizon)  # Electricity generation by combined heat
 
 # CHP constraints
 # ---------------
-chp_con = [Cap_chp == 0, P_out_heat_chp == P_in_chp * eff_heat_chp, P_out_elec_chp == P_in_chp * eff_elec_chp,
+chp_con = [Cap_chp >= 0, P_out_heat_chp == P_in_chp * eff_heat_chp, P_out_elec_chp == P_in_chp * eff_elec_chp,
            P_in_chp >= 0, P_out_heat_chp >= 0, P_out_elec_chp >= 0, P_out_elec_chp <= Cap_chp]
 
 # Photovoltaic panels
@@ -308,7 +345,7 @@ for y in np.arange(0, 25):
 
 cost = Inv + cp.sum(Op / np.power((1 + d), np.arange(1, 26)))
 co2 = 25 * cp.sum(Imp_gas * co2_gas + Imp_elec * co2_elec)
-jobs = Cap_gb * jobs_created_gb + Cap_gshp * jobs_created_gshp + Cap_pv * jobs_created_pv + Cap_ts * jobs_created_ts + Cap_bat * jobs_created_bat
+jobs = Cap_gb * jobs_created_gb + Cap_chp*jobs_created_chp + Cap_gshp * jobs_created_gshp + Cap_pv * jobs_created_pv + Cap_ts * jobs_created_ts + Cap_bat * jobs_created_bat
 
 # Collect all constraints
 # ========================
@@ -328,7 +365,7 @@ constraints = grid_con + gb_con + gshp_con + chp_con + pv_con + wind_con + ts_co
 
 print('Installed solvers:', cp.installed_solvers())
 #prob.solve(solver='SCIPY')
-"""
+
 #Multi Objective Optimization -> cost and co2
 eta = [i/10 for i in range(1,10,1)]
 sol_cost = []
@@ -339,11 +376,15 @@ prob = cp.Problem(cp.Minimize(cost), constraints)
 prob.solve(solver='SCIPY')
 sol_cost.append(cost.value)
 sol_co2.append(co2.value)
+pie_plot_production("pie_plot_production_min_cost.png")
+pie_plot_capacity("pie_plot_capacity_min_cost.png")
 #minimize co2 optimal
 prob = cp.Problem(cp.Minimize(co2), constraints)
 prob.solve(solver='SCIPY')
 sol_cost.append(cost.value)
 sol_co2.append(co2.value)
+pie_plot_production("pie_plot_production_min_emission.png")
+pie_plot_capacity("pie_plot_capacity_min_emission.png")
 
 for i in eta:
     print('Multi Objective Optimization with eta = ', i)
@@ -390,29 +431,34 @@ plt.title('Emissions vs Costs')
 plt.grid(True)
 plt.savefig('emission_vs_cost.png', dpi=300)
 plt.show()
-"""
+
 
 
 #Multiobjective Optimization -> cost and jobs
 eta = [i/10 for i in range(1,10,1)]
 sol_cost = []
 sol_jobs = []
+sol_co2 = []
 #initial optimization
 #minimze cost optimal
 prob = cp.Problem(cp.Minimize(cost), constraints)
 prob.solve(solver='SCIPY')
 sol_cost.append(cost.value)
 sol_jobs.append(jobs.value)
+sol_co2.append(co2.value)
+
 #minimize jobs optimal
-prob = cp.Problem(cp.Maximize(jobs), constraints)
+prob = cp.Problem(cp.Minimize(co2), constraints)
 prob.solve(solver='SCIPY')
 sol_cost.append(cost.value)
 sol_jobs.append(jobs.value)
+sol_co2.append(co2.value)
 
 for i in eta:
     print('Multi Objective Optimization with eta = ', i)
-    jobs_con = [jobs >= sol_jobs[0]+i*(sol_jobs[1]-sol_jobs[0])]
-    constraints_mo = constraints + jobs_con
+    #jobs_con = [jobs >= sol_jobs[0]+i*(sol_jobs[1]-sol_jobs[0])]
+    co2_con = [co2 <= sol_co2[1] + i * (sol_co2[0] - sol_co2[1])]
+    constraints_mo = constraints + co2_con
     #minimize cost and co2
     prob = cp.Problem(cp.Minimize(cost), constraints_mo)
     prob.solve(solver='SCIPY')
@@ -456,16 +502,13 @@ plt.show()
 
 
 
-"""
 #Investment Analysis
-#ToDo add base case with investment to just meet the heat demand
-#ToDO decide whether to do the costs in CHF or USD
 #Parameters
 annual_income_per_persom = 155*12 #Income per person per year [US Dollar] # in CHF: 155*12; in USD: 170*12
 percentage_invest = 0.01 #Percentage of income invested
 populationsize = 55361 #Population size
 average_government_exp = 180 #Average government expenses per person per year [US Dollar/Person] # in CHF: 180; in USD: 198
-inv_base_case = heat_demand.max()*cost_gb #Investment for base case
+inv_base_case = heat_demand.max()*cost_chp*(eff_elec_chp/eff_heat_chp) #Investment for base case
 Inv_bound = [inv_base_case,annual_income_per_persom*percentage_invest*populationsize, average_government_exp*populationsize]
 
 inv_sol_cost = []
@@ -501,8 +544,7 @@ with open(file_name, 'w', newline='') as csvfile:
     writer.writerows(zip(list(inv_sol_co2), inv_sol_cost))  # Writing data rows
 
 print("Data has been successfully saved to", file_name)
-"""
-"""
+
 # Plotting
 inv_sol_co2 = pd.read_csv('investment_costs_data.csv')['Emissions (kg)']
 inv_sol_cost = pd.read_csv('investment_costs_data.csv')['Costs']
@@ -535,8 +577,7 @@ ax.legend()
 # Show plot
 plt.savefig("investment.png",dpi=300)
 plt.show()
-"""
-"""
+
 # Output objective function value
 # ================================
 print('The value of the total system cost is equal to: ', str(cost.value), ' CHF, EUR, USD')
@@ -604,4 +645,7 @@ plt.savefig('fig3.png', bbox_inches='tight')
 plt.show()
 
 # End
-"""
+
+
+
+    
