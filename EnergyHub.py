@@ -161,11 +161,11 @@ Cap_gshp = cp.Variable(1)  # Capacity of ground-source heat pump [kW]
 P_in_gshp = cp.Variable(Horizon)  # Input energy to ground-source heat pump [kWh]
 P_out_gshp = cp.Variable(Horizon)  # Heat generation by ground-source heat pump [kWh]
 
-# GSHP constraints
+# GSHP constraints  --------- not considered
 # ----------------
-gshp_con = [Cap_gshp >= 0, P_out_gshp == P_in_gshp * eff_gshp, P_in_gshp >= 0, P_out_gshp >= 0, P_out_gshp <= Cap_gshp]
+gshp_con = [Cap_gshp == 0, P_out_gshp == P_in_gshp * eff_gshp, P_in_gshp >= 0, P_out_gshp >= 0, P_out_gshp <= Cap_gshp]
 
-# Combined heat and power engine (chp) -> not considered
+# Combined heat and power engine (chp)
 # =====================================
 
 # Parameter definitions
@@ -195,7 +195,7 @@ chp_con = [Cap_chp >= 0, P_out_heat_chp == P_in_chp * eff_heat_chp, P_out_elec_c
 
 # Parameter definitions
 size_favela = 1.2e6  # Area of the favela [m2]
-percentage_area_roof = 0.56  # Percentage of the favela area that can be used for photovoltaic panels
+percentage_area_roof = 0.3  # Percentage of the favela area that can be used for photovoltaic panels
 jobs_created_pv = 0.0341 #[job years/ kW]
 
 # Definitions
@@ -310,7 +310,7 @@ E_bat = cp.Variable(Horizon + 1)  # Stored energy in battery [kWh]
 
 # Battery constraints
 # -------------------
-bat_con_1 = [Cap_bat >= 0, Q_in_bat >= 0, Q_out_bat >= 0, E_bat >= 0, E_bat <= Cap_bat,
+bat_con_1 = [Cap_bat >= 0, Cap_bat <= 300000, Q_in_bat >= 0, Q_out_bat >= 0, E_bat >= 0, E_bat <= Cap_bat,
              Q_in_bat <= max_ch_bat * Cap_bat, Q_out_bat <= max_dis_bat * Cap_bat]
 
 # Battery constraints
@@ -366,6 +366,7 @@ constraints = grid_con + gb_con + gshp_con + chp_con + pv_con + wind_con + ts_co
 print('Installed solvers:', cp.installed_solvers())
 #prob.solve(solver='SCIPY')
 
+"""
 #Multi Objective Optimization -> cost and co2
 eta = [i/10 for i in range(1,10,1)]
 sol_cost = []
@@ -433,6 +434,7 @@ plt.savefig('emission_vs_cost.png', dpi=300)
 plt.show()
 
 
+"""
 
 #Multiobjective Optimization -> cost and jobs
 eta = [i/10 for i in range(1,10,1)]
@@ -456,14 +458,19 @@ sol_co2.append(co2.value)
 
 for i in eta:
     print('Multi Objective Optimization with eta = ', i)
-    #jobs_con = [jobs >= sol_jobs[0]+i*(sol_jobs[1]-sol_jobs[0])]
-    co2_con = [co2 <= sol_co2[1] + i * (sol_co2[0] - sol_co2[1])]
-    constraints_mo = constraints + co2_con
+    jobs_con = [jobs >= sol_jobs[0]+i*(sol_jobs[1]-sol_jobs[0])]
+    jobs_max = [jobs <= 55361*25]
+    inv_max = [Inv <= sol_cost[0]*2.5]
+    #co2_con = [co2 <= sol_co2[1] + i * (sol_co2[0] - sol_co2[1])]
+    constraints_mo = constraints + jobs_con + jobs_max #+ inv_max
     #minimize cost and co2
     prob = cp.Problem(cp.Minimize(cost), constraints_mo)
     prob.solve(solver='SCIPY')
     sol_cost.append(cost.value)
     sol_jobs.append(jobs.value)
+
+sol_jobs.pop()
+sol_cost.pop()
 
 print(sol_jobs)
 print(sol_cost)
@@ -565,6 +572,14 @@ bars1 = ax.bar(x - width/2, emissions, width, label='Emissions in kg CO2')
 
 # Plotting costs
 bars2 = ax.bar(x + width/2, costs, width, label='Costs in CHF')
+
+
+
+
+
+
+
+
 
 # Adding labels and title
 ax.set_xlabel('Scenarios')
