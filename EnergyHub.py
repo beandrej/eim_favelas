@@ -114,10 +114,10 @@ price_gas = 0.21*1.4  # Natural gas price [CHF, EUR, USD/kWh]  # USD: 0.231*1.4;
 esc_gas = 0.02  # Escalation rate per year for natural gas price
 price_elec = 0.16  # Grid electricity price [CHF/kWh]
 esc_elec = 0.02  # Escalation rate per year for electricity price
-exp_price_elec = 0.0  # Feed-in tariff for exported electricity [CHF/kWh] #ToDO find this for Brazil ###### ---- asuumption germany feed in/ new assumption no export possible
+exp_price_elec = 0.0  # Feed-in tariff for exported electricity [CHF/kWh] #assumption no export possible
 esc_elec_exp = 0.02  # Escalation rate per year for feed-in tariff for exported electricity [%]
 co2_gas = 0.198  # Natural gas emission factor [kgCO2/kWh]
-co2_elec = 0.1295  # Electricity emission factor [kgCO2/kWh] #ToDO find this for Brazil https://www.climatiq.io/data/emission-factor/2ac52a91-5922-4f9f-8def-f4302f4ecf55
+co2_elec = 0.1295  # Electricity emission factor [kgCO2/kWh] # https://www.climatiq.io/data/emission-factor/2ac52a91-5922-4f9f-8def-f4302f4ecf55
 
 # Constraint definitions
 # ----------------------
@@ -163,7 +163,7 @@ Cap_gshp = cp.Variable(1)  # Capacity of ground-source heat pump [kW]
 P_in_gshp = cp.Variable(Horizon)  # Input energy to ground-source heat pump [kWh]
 P_out_gshp = cp.Variable(Horizon)  # Heat generation by ground-source heat pump [kWh]
 
-# GSHP constraints  --------- not considered
+# GSHP constraints
 # ----------------
 gshp_con = [Cap_gshp >= 0, P_out_gshp == P_in_gshp * eff_gshp, P_in_gshp >= 0, P_out_gshp >= 0, P_out_gshp <= Cap_gshp]
 
@@ -439,7 +439,8 @@ plt.show()
 
 
 
-
+"""
+"""
 #Multiobjective Optimization -> cost and jobs
 eta = [i/10 for i in range(1,10,1)]
 sol_cost = []
@@ -459,14 +460,13 @@ prob.solve(solver='SCIPY')
 sol_cost.append(cost.value)
 sol_jobs.append(jobs.value)
 sol_co2.append(co2.value)
-
 for i in eta:
     print('Multi Objective Optimization with eta = ', i)
-    jobs_con = [jobs >= sol_jobs[0]+i*(sol_jobs[1]-sol_jobs[0])]
-    jobs_max = [jobs <= 55361*25]
-    inv_max = [Inv <= sol_cost[0]*2.5]
-    #co2_con = [co2 <= sol_co2[1] + i * (sol_co2[0] - sol_co2[1])]
-    constraints_mo = constraints + jobs_con + jobs_max #+ inv_max
+    #jobs_con = [jobs >= sol_jobs[0]+i*(sol_jobs[1]-sol_jobs[0])]
+    #jobs_max = [jobs <= 55361*25]
+    #inv_max = [Inv <= sol_cost[0]*2.5]
+    co2_con = [co2 <= sol_co2[1] + i * (sol_co2[0] - sol_co2[1])]
+    constraints_mo = constraints + co2_con #+ jobs_con + jobs_max #+ inv_max
     #minimize cost and co2
     prob = cp.Problem(cp.Minimize(cost), constraints_mo)
     prob.solve(solver='SCIPY')
@@ -486,13 +486,14 @@ with open(file_name, 'w', newline='') as csvfile:
     writer.writerows(zip(list(sol_jobs), sol_cost))  # Writing data rows
 
 print("Data has been successfully saved to", file_name)
-
-
+"""
+"""
 # Plotting
 sol_jobs = pd.read_csv('jobs_costs_data.csv')['Jobs']
 sol_cost = pd.read_csv('jobs_costs_data.csv')['Costs']
 
-jobs = list(sol_jobs)
+
+jobs = [float(x[1:-1]) for x in sol_jobs]
 costs = [float(x[1:-1]) for x in sol_cost]
 jobs = jobs[1:] + [jobs[0]]
 costs = costs[1:] + [costs[0]]
@@ -508,8 +509,8 @@ plt.grid(True)
 plt.savefig('jobs_vs_cost.png', dpi=300)
 plt.show()
 
-
-
+"""
+"""
 #Investment Analysis
 #Parameters
 annual_income_per_persom = 155*12 #Income per person per year [US Dollar] # in CHF: 155*12; in USD: 170*12
