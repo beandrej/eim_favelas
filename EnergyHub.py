@@ -27,8 +27,8 @@ import data_import
 #Help functions
 def pie_plot_production(name):
     # Energy sources and their respective production values
-    energy_sources = ['Solar', 'Natural Gas', 'HeatPump', 'Grid']
-    production_values = [P_out_pv.value.sum(), P_out_gb.value.sum(), P_out_gshp.value.sum(), Imp_elec.value.sum()]
+    energy_sources = ['Solar', 'Natural Gas','CHP','HeatPump', 'Grid']
+    production_values = [P_out_pv.value.sum(), P_out_gb.value.sum(), P_out_heat_chp.value.sum()+P_out_elec_chp.value.sum() , P_out_gshp.value.sum(), Imp_elec.value.sum()]
 
     # Creating the pie plot
     plt.figure(figsize=(8, 8))
@@ -42,8 +42,8 @@ def pie_plot_production(name):
 
 def pie_plot_capacity(name):
     # Energy sources and their respective production values
-    energy_sources = ['Solar', 'Natural Gas', 'HeatPump', 'Battery', 'Heat Storage']
-    production_values = [Cap_pv.value.sum(), Cap_gb.value.sum(),Cap_gshp.value.sum(), Cap_bat.value.sum(), Cap_ts.value.sum()]
+    energy_sources = ['Solar', 'Natural Gas','CHP' ,'HeatPump', 'Battery', 'Heat Storage']
+    production_values = [Cap_pv.value.sum(), Cap_gb.value.sum(),Cap_chp.value.sum(),Cap_gshp.value.sum(), Cap_bat.value.sum(), Cap_ts.value.sum()]
 
     # Filter out energy sources with production values of zero
     filtered_sources = []
@@ -87,7 +87,14 @@ IMPORT FINISH
 # Renewable energy potentials
 # ============================
 #solar = pd.read_excel('solar.xlsx', header=None, names=['Solar radiation [kWh/m2]'])
-solar = pd.read_csv('solar.csv', delimiter=',', comment='#')['swgdn']*0.001 # in kWh/m2
+solar = pd.read_csv('maruas_solar.csv', delimiter=',', comment='#')['swgdn']*0.001 # in kWh/m2
+solar_header = solar.head(4)
+solar.drop(solar.index[:4], inplace=True)
+both_solar = [solar, solar_header]
+solar = pd.concat(both_solar, ignore_index=True)
+assert len(solar) == 8760
+
+
 wind = pd.read_excel('wind.xlsx', header=None, names=['Wind speed [m/s]'])
 
 # Optimization horizon
@@ -251,7 +258,7 @@ for t in np.arange(0, 8760):
         wind_con = wind_con + [P_out_wind[t] == Cap_wind * (wind.loc[t, 'Wind speed [m/s]'] - cut_in_wind_speed) / (
                     rated_wind_speed - cut_in_wind_speed)]
 
-# Thermal storage tank  --> not considered
+# Thermal storage tank
 # =====================
 
 # Definitions
@@ -276,7 +283,7 @@ E_ts = cp.Variable(Horizon + 1)  # Stored energy in thermal storage tank [kWh]
 
 # Storage tank constraints
 # ------------------------
-ts_con_1 = [Cap_ts == 0, Q_in_ts >= 0, Q_out_ts >= 0, E_ts >= 0, E_ts <= Cap_ts, Q_in_ts <= max_ch_ts * Cap_ts,
+ts_con_1 = [Cap_ts >= 0, Q_in_ts >= 0, Q_out_ts >= 0, E_ts >= 0, E_ts <= Cap_ts, Q_in_ts <= max_ch_ts * Cap_ts,
             Q_out_ts <= max_dis_ts * Cap_ts]
 
 # Storage constraints
@@ -439,8 +446,7 @@ plt.show()
 
 
 
-"""
-"""
+
 #Multiobjective Optimization -> cost and jobs
 eta = [i/10 for i in range(1,10,1)]
 sol_cost = []
@@ -486,8 +492,7 @@ with open(file_name, 'w', newline='') as csvfile:
     writer.writerows(zip(list(sol_jobs), sol_cost))  # Writing data rows
 
 print("Data has been successfully saved to", file_name)
-"""
-"""
+
 # Plotting
 sol_jobs = pd.read_csv('jobs_costs_data.csv')['Jobs']
 sol_cost = pd.read_csv('jobs_costs_data.csv')['Costs']
@@ -509,8 +514,7 @@ plt.grid(True)
 plt.savefig('jobs_vs_cost.png', dpi=300)
 plt.show()
 
-"""
-"""
+
 #Investment Analysis
 #Parameters
 annual_income_per_persom = 155*12 #Income per person per year [US Dollar] # in CHF: 155*12; in USD: 170*12
@@ -522,6 +526,7 @@ Inv_bound = [inv_base_case,annual_income_per_persom*percentage_invest*population
 
 inv_sol_cost = []
 inv_sol_co2 = []
+inv_sol_jobs = []
 
 for bound in Inv_bound:
     print('Investment Analysis with bound = ', bound)
@@ -532,12 +537,14 @@ for bound in Inv_bound:
     prob.solve(solver='SCIPY')
     inv_sol_cost.append(cost.value)
     inv_sol_co2.append(co2.value)
+    inv_sol_jobs.append(jobs.value[0])
 
 #unlimited investment
 prob = cp.Problem(cp.Minimize(cost), constraints)
 prob.solve(solver='SCIPY')
 inv_sol_cost.append(cost.value)
 inv_sol_co2.append(co2.value)
+inv_sol_jobs.append(jobs.value)
 
 
 print(inv_sol_co2)
@@ -554,15 +561,28 @@ with open(file_name, 'w', newline='') as csvfile:
 
 print("Data has been successfully saved to", file_name)
 
+file_name = "investment_jobs_data.csv"
+
+# Writing data to CSV file
+with open(file_name, 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(["Jobs", "Costs"])  # Writing header
+    writer.writerows(zip(list(inv_sol_jobs), inv_sol_cost))  # Writing data rows
+
+print("Data has been successfully saved to", file_name)
+
 # Plotting
 inv_sol_co2 = pd.read_csv('investment_costs_data.csv')['Emissions (kg)']
 inv_sol_cost = pd.read_csv('investment_costs_data.csv')['Costs']
+inv_sol_jobs = pd.read_csv('investment_jobs_data.csv')['Jobs']
 
 #PLot
 # Sample data (replace with your actual data)
 scenarios = ['Base Case', 'Income', 'Government', 'Unlimited']
 emissions = list(inv_sol_co2)  # Emissions in kg
-costs = list([float(x[1:-1]) for x in inv_sol_cost])  # Costs in some currency
+costs = list([float(x[1:-1]) for x in inv_sol_cost])
+jobs_created = list([float(x) for x in inv_sol_jobs[0:-1]])
+jobs_created+=[float(inv_sol_jobs[3][1:-1])]
 
 # Setting up positions for the bars
 x = np.arange(len(scenarios))  # the scenario locations
@@ -575,14 +595,6 @@ bars1 = ax.bar(x - width/2, emissions, width, label='Emissions in kg CO2')
 # Plotting costs
 bars2 = ax.bar(x + width/2, costs, width, label='Costs in CHF')
 
-
-
-
-
-
-
-
-
 # Adding labels and title
 ax.set_xlabel('Scenarios')
 ax.set_ylabel('Values')
@@ -593,6 +605,40 @@ ax.legend()
 
 # Show plot
 plt.savefig("investment.png",dpi=300)
+plt.show()
+
+#PLot with Jobs created
+
+# Setting up positions for the bars
+x = np.arange(len(scenarios))  # the scenario locations
+width = 0.2  # the width of the bars
+
+# Plotting emissions
+fig, ax = plt.subplots()
+bars1 = ax.bar(x - width, emissions, width, label='Emissions in kg CO2')
+
+# Plotting costs
+bars2 = ax.bar(x, costs, width, label='Costs in CHF')
+
+# Plotting jobs created (using a secondary y-axis)
+ax2 = ax.twinx()
+bars3 = ax2.bar(x + width, jobs_created, width, color='orange', label='Jobs Created')
+
+# Adding labels and title
+ax.set_xlabel('Scenarios')
+ax.set_ylabel('Emissions and Costs')
+ax2.set_ylabel('Jobs Created')
+ax.set_title('Emissions, Costs, and Jobs Created for Different Scenarios')
+ax.set_xticks(x)
+ax.set_xticklabels(scenarios)
+# Positioning legends
+ax.legend(loc='upper center', bbox_to_anchor=(0.67, 1))
+ax2.legend(loc='upper center', bbox_to_anchor=(0.32, 1))
+
+
+# Show plot
+plt.tight_layout()  # Adjust layout to prevent overlapping labels
+plt.savefig("investment_with_jobs.png", dpi=300)
 plt.show()
 
 # Output objective function value

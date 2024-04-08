@@ -25,10 +25,10 @@ def get_data():
     both = [heat, header]
     heat = pd.concat(both, ignore_index=True)
     
-    heat = heat * 1000 * 4  # in kWh
-    print(heat.mean())
+    heat = heat * 1000 * 1.5  # in kWh (1.5 is a scaling factor)
+    #print(heat.mean())
     
-    print(elec.mean())
+    #print(elec.mean())
     assert len(elec) == 8760 and len(heat) == 8760
     return np.array(elec), np.array(heat)
 
