@@ -6,13 +6,12 @@
  Converted from Matlab to Python by: S. Powell (spowell@ethz.ch) 05.01.2024 |
  ========================================================================
 
-Andrej: Gas Price, Electricity Price, Feed-in Tariff, Elecitricity Emission Factor, renewable ninja
-
     ========================================================================
     Parameter sources and assumptions:
     -> Demands:
-    - Heat Demand (onyl for cooking and showering):
-    - Electricity Demand (per month average household consumption at 170 kWh):
+    - Heat Demand (onyl for cooking and showering): Heat demand was taken from renewables.ninja with choosing the coordinates
+    - Electricity Demand (per month average household consumption at 170 kWh): Electricity demand for brazil was very hard to find, so we took a electricity profile of the US and 
+                                                                                and scaled it accordingly so the energy consumption matches 170kWh per household.
 
     -> Energy Prices and Emission Factors:
     - Electricity Mix Emission in Brazil (kgCO2/kWh): https://www.climatiq.io/data/emission-factor/2ac52a91-5922-4f9f-8def-f4302f4ecf55
@@ -28,6 +27,16 @@ Andrej: Gas Price, Electricity Price, Feed-in Tariff, Elecitricity Emission Fact
     -> Investment:
     - Average Government Expenses in energy per person in Brazil: https://www.gov.br/en/government-of-brazil/latest-news/2021/brazil-is-targeting-extensive-energy-investments#:~:text=According%20to%20official%20data%20from,and%20new%20sources%20of%20energy. -> Value given is total money spent -> divided by total population and then multiplied by population of favela
 
+    -> Price of gas
+
+    natrual gas: 	https://de.globalpetrolprices.com/USA/natural_gas_prices/
+		            https://insightcrime.org/news/militias-price-gouging-locals-essential-services-rio-favelas/#:~:text=The%20average%20price%20of%20a,to%20Brazilian%20news%20site%20Globo.
+
+    elec:		https://rioonwatch.org/?p=66501
+
+    feed in		https://www.roedl.com/renewable-energy-consulting/markets/countries/marketing-models-brazil#:~:text=Differently%20from%20some%20developed%20countries,used%20is%20%E2%80%9CNet%20Metering%E2%80%9D.
+
+    elec em		https://www.carbonfootprint.com/docs/2023_02_emissions_factors_sources_for_2022_electricity_v10.pdf
 
 """
 
