@@ -32,11 +32,11 @@
     natrual gas: 	https://de.globalpetrolprices.com/USA/natural_gas_prices/
 		            https://insightcrime.org/news/militias-price-gouging-locals-essential-services-rio-favelas/#:~:text=The%20average%20price%20of%20a,to%20Brazilian%20news%20site%20Globo.
 
-    elec:		https://rioonwatch.org/?p=66501
+    Electricity price:		https://rioonwatch.org/?p=66501
 
-    feed in		https://www.roedl.com/renewable-energy-consulting/markets/countries/marketing-models-brazil#:~:text=Differently%20from%20some%20developed%20countries,used%20is%20%E2%80%9CNet%20Metering%E2%80%9D.
+    feed in price:		https://www.roedl.com/renewable-energy-consulting/markets/countries/marketing-models-brazil#:~:text=Differently%20from%20some%20developed%20countries,used%20is%20%E2%80%9CNet%20Metering%E2%80%9D.
 
-    elec em		https://www.carbonfootprint.com/docs/2023_02_emissions_factors_sources_for_2022_electricity_v10.pdf
+    elec emissions:		https://www.carbonfootprint.com/docs/2023_02_emissions_factors_sources_for_2022_electricity_v10.pdf
 
 """
 
