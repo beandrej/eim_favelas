@@ -11,7 +11,7 @@
     -> Demands:
     - Heat Demand (onyl for cooking and showering): Heat demand was taken from renewables.ninja with choosing the coordinates
     - Electricity Demand (per month average household consumption at 170 kWh): Electricity demand for brazil was very hard to find, so we took a electricity profile of the US and 
-                                                                                and scaled it accordingly so the energy consumption matches 170kWh per household.
+                                                                                and scaled it accordingly so the energy consumption matches 170kWh per household, which we found to be the monthly energy consumption in favelas in Brazil (see pitch document of our idea).
 
     
     - Electricity Mix Emission in Brazil (kgCO2/kWh): https://www.climatiq.io/data/emission-factor/2ac52a91-5922-4f9f-8def-f4302f4ecf55
@@ -23,18 +23,17 @@
     - Area of favela: https://www.citypopulation.de/en/brazil/rio/_/33045570538__cidade_de_deus/
     - Area of favela that is covered by roofs (%): https://isprs-annals.copernicus.org/articles/IV-2-W5/437/2019/isprs-annals-IV-2-W5-437-2019.pdf (page 443) -> gives information of how densily houses are built in favelas -> thus how much of the total area is covered by roofs -> roughly 60%
     - Percenatage of roof area that can be covered by (flat) PV panels: https://www.nrel.gov/docs/fy14osti/60593.pdf -> roughly 50% (see page 6)
+    - Maxmimum Capacity of Batteries that can be installed: Per household maximum available battery size: ->
 
     -> Investment:
     - Average Government Expenses in energy per person in Brazil: https://www.gov.br/en/government-of-brazil/latest-news/2021/brazil-is-targeting-extensive-energy-investments#:~:text=According%20to%20official%20data%20from,and%20new%20sources%20of%20energy. -> Value given is total money spent -> divided by total population and then multiplied by population of favela
 
-    -> Price of gas
+    -> Prices and Emission factors:
 
     natrual gas: 	https://de.globalpetrolprices.com/USA/natural_gas_prices/
 		            https://insightcrime.org/news/militias-price-gouging-locals-essential-services-rio-favelas/#:~:text=The%20average%20price%20of%20a,to%20Brazilian%20news%20site%20Globo.
 
     Electricity price:		https://rioonwatch.org/?p=66501
-
-    feed in price:		https://www.roedl.com/renewable-energy-consulting/markets/countries/marketing-models-brazil#:~:text=Differently%20from%20some%20developed%20countries,used%20is%20%E2%80%9CNet%20Metering%E2%80%9D.
 
     elec emissions:		https://www.carbonfootprint.com/docs/2023_02_emissions_factors_sources_for_2022_electricity_v10.pdf
 
@@ -138,7 +137,7 @@ price_gas = 0.21*1.4  # Natural gas price [CHF, EUR, USD/kWh]  # USD: 0.231*1.4;
 esc_gas = 0.02  # Escalation rate per year for natural gas price # assumption: 2% per year -> average inflation rate
 price_elec = 0.16  # Grid electricity price [CHF/kWh]
 esc_elec = 0.02  # Escalation rate per year for electricity price
-exp_price_elec = 0.0  # Feed-in tariff for exported electricity [CHF/kWh] #assumption no export possible -> a feed-in-tariff does not seem to be avaialble to such an extent in Brazil as in Europe
+exp_price_elec = 0.0  # Feed-in tariff for exported electricity [CHF/kWh] #assumption no export possible -> a feed-in-tariff does not seem to be avaialble to such an extent in Brazil as in Europe, see following source for more information: https://www.roedl.com/renewable-energy-consulting/markets/countries/marketing-models-brazil#:~:text=Differently%20from%20some%20developed%20countries,used%20is%20%E2%80%9CNet%20Metering%E2%80%9D.
 esc_elec_exp = 0.02  # Escalation rate per year for feed-in tariff for exported electricity [%]
 co2_gas = 0.198  # Natural gas emission factor [kgCO2/kWh]
 co2_elec = 0.1295  # Electricity emission factor [kgCO2/kWh]
@@ -337,7 +336,7 @@ E_bat = cp.Variable(Horizon + 1)  # Stored energy in battery [kWh]
 # Battery constraints
 # -------------------
 bat_con_1 = [Cap_bat >= 0, Cap_bat <= 70000, Q_in_bat >= 0, Q_out_bat >= 0, E_bat >= 0, E_bat <= Cap_bat,
-             Q_in_bat <= max_ch_bat * Cap_bat, Q_out_bat <= max_dis_bat * Cap_bat]
+             Q_in_bat <= max_ch_bat * Cap_bat, Q_out_bat <= max_dis_bat * Cap_bat] # Max Capacity of Battery included for a more realistic scenario: see source at the top of the code
 
 # Battery constraints
 # -------------------
