@@ -6,11 +6,27 @@
  Converted from Matlab to Python by: S. Powell (spowell@ethz.ch) 05.01.2024 |
  ========================================================================
 
- Technologies: Gas boiler, PV, battery, heat storage, HeatPump
- Parameters: See first list, Favela Area for PV, Income Average Household favela, Job created per technology, renewable ninja
-
 Andrej: Gas Price, Electricity Price, Feed-in Tariff, Elecitricity Emission Factor, renewable ninja
-Lukas: Income Average Household favela, Job created per technology, Favela Area for PV
+
+    ========================================================================
+    Parameter sources and assumptions:
+    -> Demands:
+    - Heat Demand (onyl for cooking and showering):
+    - Electricity Demand (per month average household consumption at 170 kWh):
+
+    -> Energy Prices and Emission Factors:
+    - Electricity Mix Emission in Brazil (kgCO2/kWh): https://www.climatiq.io/data/emission-factor/2ac52a91-5922-4f9f-8def-f4302f4ecf55
+
+
+    -> Technology Parameters:
+    - Jobs created per Capacity installed of technology: Supplementary data of https://www.sciencedirect.com/science/article/pii/S0360544221019381?via%3Dihub#appsec1
+    - Income Average Household favela: https://rioonwatch.org/?p=57787
+    - Area of favela: https://www.citypopulation.de/en/brazil/rio/_/33045570538__cidade_de_deus/
+    - Area of favela that is covered by roofs (%): https://isprs-annals.copernicus.org/articles/IV-2-W5/437/2019/isprs-annals-IV-2-W5-437-2019.pdf (page 443) -> gives information of how densily houses are built in favelas -> thus how much of the total area is covered by roofs -> roughly 60%
+    - Percenatage of roof area that can be covered by (flat) PV panels: https://www.nrel.gov/docs/fy14osti/60593.pdf -> roughly 50% (see page 6)
+
+    -> Investment:
+    - Average Government Expenses in energy per person in Brazil: https://www.gov.br/en/government-of-brazil/latest-news/2021/brazil-is-targeting-extensive-energy-investments#:~:text=According%20to%20official%20data%20from,and%20new%20sources%20of%20energy. -> Value given is total money spent -> divided by total population and then multiplied by population of favela
 
 
 """
@@ -62,14 +78,7 @@ def pie_plot_capacity(name):
     plt.savefig(name, dpi=300)
     plt.show()
 
-# Energy demands
-# ===============
-#demand_data = pd.read_excel('demands.xlsx',
-                         #   names=['Heating demand [kWh]', 'Electricity demand [kWh]'],
-                         #   header=None)
-#elec_demand = demand_data['Electricity demand [kWh]'].values
-#heat_demand = demand_data['Heating demand [kWh]'].values
-
+#Energy Demands
 """
 
 BRAZIL DATA IMPORT
@@ -115,16 +124,15 @@ Imp_gas = cp.Variable(Horizon)  # Natural gas import from the grid for every tim
 Exp_elec = cp.Variable(Horizon)  # Electricity export from the grid for every time step [kWh]
 
 # Parameter definitions
-#ToDO check if all in CHF
 # ---------------------
 price_gas = 0.21*1.4  # Natural gas price [CHF, EUR, USD/kWh]  # USD: 0.231*1.4; CHF 0.21*1.4
-esc_gas = 0.02  # Escalation rate per year for natural gas price
+esc_gas = 0.02  # Escalation rate per year for natural gas price # assumption: 2% per year -> average inflation rate
 price_elec = 0.16  # Grid electricity price [CHF/kWh]
 esc_elec = 0.02  # Escalation rate per year for electricity price
-exp_price_elec = 0.0  # Feed-in tariff for exported electricity [CHF/kWh] #assumption no export possible
+exp_price_elec = 0.0  # Feed-in tariff for exported electricity [CHF/kWh] #assumption no export possible -> a feed-in-tariff does not seem to be avaialble to such an extent in Brazil as in Europe
 esc_elec_exp = 0.02  # Escalation rate per year for feed-in tariff for exported electricity [%]
 co2_gas = 0.198  # Natural gas emission factor [kgCO2/kWh]
-co2_elec = 0.1295  # Electricity emission factor [kgCO2/kWh] # https://www.climatiq.io/data/emission-factor/2ac52a91-5922-4f9f-8def-f4302f4ecf55
+co2_elec = 0.1295  # Electricity emission factor [kgCO2/kWh]
 
 # Constraint definitions
 # ----------------------
@@ -137,7 +145,7 @@ grid_con = [Imp_elec >= 0, Imp_gas >= 0, Exp_elec >= 0]
 # ---------------------
 eff_gb = 0.9  # Conversion efficiency of gas boiler
 cost_gb = 110  # Investment cost for gas boiler [CHF, EUR, USD/kW]
-jobs_created_gb = 0.00237 #[job years/ kW] excluding fuel related jobs as we have a pipeline already built with fuel + 15.1 jobs/PJ of gas
+jobs_created_gb = 0.00237 #[job years/ kW] excluding fuel related jobs as we have a pipeline already built with fuel available
 
 # Capacity variable
 # ------------------
@@ -388,6 +396,10 @@ sol_cost.append(cost.value)
 sol_co2.append(co2.value)
 pie_plot_production("pie_plot_production_min_cost.png")
 pie_plot_capacity("pie_plot_capacity_min_cost.png")
+total_area_pv = Cap_pv.value
+print("Total area of PV panels installed in cost optimal case: ", total_area_pv)
+print("Percentage of roof area covered by PV panels in cost optimal case: ", total_area_pv / max_solar_area * 100, "%")
+
 #minimize co2 optimal
 prob = cp.Problem(cp.Minimize(co2), constraints)
 prob.solve(solver='SCIPY')
@@ -395,6 +407,9 @@ sol_cost.append(cost.value)
 sol_co2.append(co2.value)
 pie_plot_production("pie_plot_production_min_emission.png")
 pie_plot_capacity("pie_plot_capacity_min_emission.png")
+total_area_pv = Cap_pv.value
+print("Total area of PV panels installed in emission optimal case: ", total_area_pv)
+print("Percentage of roof area covered by PV panels in emission optimal case: ", total_area_pv / max_solar_area * 100, "%")
 
 
 
@@ -448,6 +463,12 @@ plt.show()
 
 
 #Multiobjective Optimization -> cost and jobs
+"""
+Note that we tried to implement a multiobjective optimization with cost and jobs. 
+However maximizing jobs did not converge even after adding constraints such as maximal allowed investment costs or 
+an upper bound of capacity for each technology or an upper bound of jobs created.
+Consequently, we decided to show jobs created as an output of the multiobjective optimization with cost and co2.
+"""
 eta = [i/10 for i in range(1,10,1)]
 sol_cost = []
 sol_jobs = []
@@ -521,7 +542,7 @@ annual_income_per_persom = 155*12 #Income per person per year [US Dollar] # in C
 percentage_invest = 0.01 #Percentage of income invested
 populationsize = 55361 #Population size
 average_government_exp = 180 #Average government expenses per person per year [US Dollar/Person] # in CHF: 180; in USD: 198
-inv_base_case = heat_demand.max()*cost_chp*(eff_elec_chp/eff_heat_chp) #Investment for base case
+inv_base_case = heat_demand.max()*cost_chp*(eff_elec_chp/eff_heat_chp) #Investment for base case -> as there is no heat grid to import heat directly, at least the given heat demand must be met to ensure feasibility, thus there must be enough money to invest in the cheapest heat source to meet the maximum demand
 Inv_bound = [inv_base_case,annual_income_per_persom*percentage_invest*populationsize, average_government_exp*populationsize]
 
 inv_sol_cost = []
@@ -656,6 +677,7 @@ print('The capacity of the wind turbines is: ', str(np.round(Cap_wind.value)), '
 print('The capacity of the thermal storage is: ', str(np.round(Cap_ts.value)), ' kWh')
 print('The capacity of the battery is: ', str(np.round(Cap_bat.value)), ' kWh')
 
+
 # Plot the optimal energy system operation results
 # =================================================
 
@@ -694,6 +716,7 @@ plt.tight_layout()
 plt.savefig('fig2.png', bbox_inches='tight')
 plt.show()
 
+
 # Gas
 plt.figure()
 plt.plot(t, P_in_chp.value, label='CHP')
@@ -706,6 +729,7 @@ plt.title('Gas node')
 plt.tight_layout()
 plt.savefig('fig3.png', bbox_inches='tight')
 plt.show()
+
 
 # End
 
