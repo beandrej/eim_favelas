@@ -18,18 +18,19 @@ def get_data():
     scaling_factor = (0.1741*0.88*55361*0.25*12)/year["Demand (MWh)"].sum() # monthly conusmption per household * number of households * 0.25 * 12 months / total consumption
     elec = year["Demand (MWh)"] * scaling_factor * 1000 # in kWh
 
-    heat = pd.read_csv('maruas_heat.csv', delimiter=',', comment='#')['total_demand']
+    heat = pd.read_csv('manaus_heat.csv', delimiter=',', comment='#')['total_demand']
+    print(heat.head())
     header = heat.head(4)
     heat.drop(heat.index[:4], inplace=True)
 
     both = [heat, header]
     heat = pd.concat(both, ignore_index=True)
-    
     heat = heat * 1000 * 1.5  # in kWh (1.5 is a scaling factor)
     #print(heat.mean())
-    
+    print(len(heat))
     #print(elec.mean())
     assert len(elec) == 8760 and len(heat) == 8760
     return np.array(elec), np.array(heat)
+
 
 get_data()
