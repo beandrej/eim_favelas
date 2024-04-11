@@ -19,7 +19,7 @@ def get_data():
     elec = year["Demand (MWh)"] * scaling_factor * 1000 # in kWh
 
     heat = pd.read_csv('manaus_heat.csv', delimiter=',', comment='#')['total_demand']
-    print(heat.head())
+    #print(heat.head())
     header = heat.head(4)
     heat.drop(heat.index[:4], inplace=True)
 
@@ -27,10 +27,10 @@ def get_data():
     heat = pd.concat(both, ignore_index=True)
     heat = heat * 1000 * 1.5  # in kWh (1.5 is a scaling factor)
     #print(heat.mean())
-    print(len(heat))
+    #print(len(heat))
     #print(elec.mean())
     assert len(elec) == 8760 and len(heat) == 8760
     return np.array(elec), np.array(heat)
 
 
-get_data()
+#get_data()
