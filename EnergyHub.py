@@ -13,7 +13,7 @@
     - Electricity Demand (per month average household consumption at 170 kWh): Electricity demand for brazil was very hard to find, so we took a electricity profile of the US and 
                                                                                 and scaled it accordingly so the energy consumption matches 170kWh per household.
 
-    -> Energy Prices and Emission Factors:
+    
     - Electricity Mix Emission in Brazil (kgCO2/kWh): https://www.climatiq.io/data/emission-factor/2ac52a91-5922-4f9f-8def-f4302f4ecf55
 
 
