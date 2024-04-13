@@ -1,3 +1,5 @@
-# EIM Group Project
+# Optimization of Multi Energy System in the Favelas
 
-Modeling favelas energy demand and optimizing with MOSEK.
+Modelling and optimizing the Energy System of the Favelas in Manaus, Brazil.
+
+Using optimization library cxpvy and 'MOSEK' solver.
