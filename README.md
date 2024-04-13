@@ -2,4 +2,4 @@
 
 Modelling and optimizing the Energy System of the Favelas in Manaus, Brazil.
 
-Using optimization library cxpvy and 'MOSEK' solver.
+Using optimization library cvxpy and 'MOSEK' solver.
